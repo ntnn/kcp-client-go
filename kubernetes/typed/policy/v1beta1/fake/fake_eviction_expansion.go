@@ -22,7 +22,6 @@ import (
 
 	policy "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-
 	core "github.com/kcp-dev/client-go/third_party/k8s.io/client-go/testing"
 )
 
