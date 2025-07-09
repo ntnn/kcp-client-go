@@ -712,12 +712,12 @@ func (a ListActionImpl) GetKind() schema.GroupVersionKind {
 	return a.Kind
 }
 
-func (a ListActionImpl) GetListOptions() metav1.ListOptions {
-	return a.ListOptions
-}
-
 func (a ListActionImpl) GetListRestrictions() ListRestrictions {
 	return a.ListRestrictions
+}
+
+func (a ListActionImpl) GetListOptions() metav1.ListOptions {
+	return a.ListOptions
 }
 
 func (a ListActionImpl) DeepCopy() Action {
@@ -791,16 +791,16 @@ func (a PatchActionImpl) GetName() string {
 	return a.Name
 }
 
-func (a PatchActionImpl) GetPatchOptions() metav1.PatchOptions {
-	return a.PatchOptions
-}
-
 func (a PatchActionImpl) GetPatch() []byte {
 	return a.Patch
 }
 
 func (a PatchActionImpl) GetPatchType() types.PatchType {
 	return a.PatchType
+}
+
+func (a PatchActionImpl) GetPatchOptions() metav1.PatchOptions {
+	return a.PatchOptions
 }
 
 func (a PatchActionImpl) DeepCopy() Action {
