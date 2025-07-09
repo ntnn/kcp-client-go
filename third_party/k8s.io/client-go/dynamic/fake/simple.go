@@ -35,7 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 
-	kcpdynamic "github.com/kcp-dev/client-go/dynamic"
 	kcptesting "github.com/kcp-dev/client-go/third_party/k8s.io/client-go/testing"
 )
 
@@ -127,97 +126,9 @@ func NewSimpleDynamicClientWithCustomListKinds(scheme *runtime.Scheme, gvrToList
 	return cs
 }
 
-var (
-	_ kcpdynamic.ClusterInterface = &FakeDynamicClusterClientset{}
-	_ kcptesting.FakeClient       = &FakeDynamicClusterClientset{}
-)
-
 // Clientset implements clientset.Interface. Meant to be embedded into a
 // struct to get a default implementation. This makes faking out just the method
 // you want to test easier.
-type FakeDynamicClusterClientset struct {
-	*kcptesting.Fake
-	scheme        *runtime.Scheme
-	gvrToListKind map[schema.GroupVersionResource]string
-	tracker       kcptesting.ObjectTracker
-}
-
-func (c *FakeDynamicClusterClientset) Tracker() kcptesting.ObjectTracker {
-	return c.tracker
-}
-
-func (c *FakeDynamicClusterClientset) Cluster(clusterPath logicalcluster.Path) dynamic.Interface {
-	if clusterPath == logicalcluster.Wildcard {
-		panic("A specific cluster must be provided when scoping, not the wildcard.")
-	}
-	return &FakeDynamicClient{
-		Fake:          c.Fake,
-		tracker:       c.tracker.Cluster(clusterPath),
-		clusterPath:   clusterPath,
-		gvrToListKind: c.gvrToListKind,
-	}
-}
-
-func (c *FakeDynamicClusterClientset) Resource(resource schema.GroupVersionResource) kcpdynamic.ResourceClusterInterface {
-	return &FakeDynamicClusterClient{
-		Fake:          c.Fake,
-		scheme:        c.scheme,
-		gvrToListKind: c.gvrToListKind,
-		tracker:       c.tracker,
-		resource:      resource,
-	}
-}
-
-var (
-	_ kcpdynamic.ResourceClusterInterface = &FakeDynamicClusterClient{}
-	_ kcptesting.FakeClient               = &FakeDynamicClusterClient{}
-)
-
-type FakeDynamicClusterClient struct {
-	*kcptesting.Fake
-	scheme        *runtime.Scheme
-	gvrToListKind map[schema.GroupVersionResource]string
-	tracker       kcptesting.ObjectTracker
-	resource      schema.GroupVersionResource
-}
-
-func (f *FakeDynamicClusterClient) Tracker() kcptesting.ObjectTracker {
-	return f.tracker
-}
-
-func (f *FakeDynamicClusterClient) Cluster(clusterPath logicalcluster.Path) dynamic.NamespaceableResourceInterface {
-	if clusterPath == logicalcluster.Wildcard {
-		panic("A specific cluster must be provided when scoping, not the wildcard.")
-	}
-	return f.cluster(clusterPath)
-}
-
-func (f *FakeDynamicClusterClient) cluster(clusterPath logicalcluster.Path) dynamic.NamespaceableResourceInterface {
-	return &dynamicResourceClient{
-		client: &FakeDynamicClient{
-			Fake:          f.Fake,
-			tracker:       f.tracker.Cluster(clusterPath),
-			clusterPath:   clusterPath,
-			gvrToListKind: f.gvrToListKind,
-		},
-		resource: f.resource,
-		listKind: f.gvrToListKind[f.resource],
-	}
-}
-
-func (f *FakeDynamicClusterClient) List(ctx context.Context, opts metav1.ListOptions) (*unstructured.UnstructuredList, error) {
-	return f.cluster(logicalcluster.Wildcard).List(ctx, opts)
-}
-
-func (f *FakeDynamicClusterClient) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	return f.cluster(logicalcluster.Wildcard).Watch(ctx, opts)
-}
-
-var (
-	_ dynamic.Interface           = &FakeDynamicClient{}
-	_ kcptesting.FakeScopedClient = &FakeDynamicClient{}
-)
-
 type FakeDynamicClient struct {
 	*kcptesting.Fake
 	scheme        *runtime.Scheme
@@ -226,19 +137,24 @@ type FakeDynamicClient struct {
 	clusterPath   logicalcluster.Path
 }
 
-func (f *FakeDynamicClient) Tracker() kcptesting.ScopedObjectTracker {
-	return f.tracker
-}
-
-func (f *FakeDynamicClient) Resource(resource schema.GroupVersionResource) dynamic.NamespaceableResourceInterface {
-	return &dynamicResourceClient{client: f, resource: resource, listKind: f.gvrToListKind[resource]}
-}
-
 type dynamicResourceClient struct {
 	client    *FakeDynamicClient
 	namespace string
 	resource  schema.GroupVersionResource
 	listKind  string
+}
+
+var (
+	_ dynamic.Interface     = &FakeDynamicClient{}
+	_ kcptesting.FakeClient = &FakeDynamicClient{}
+)
+
+func (c *FakeDynamicClient) Tracker() kcptesting.ObjectTracker {
+	return c.tracker
+}
+
+func (c *FakeDynamicClient) Resource(resource schema.GroupVersionResource) dynamic.NamespaceableResourceInterface {
+	return &dynamicResourceClient{client: c, resource: resource, listKind: c.gvrToListKind[resource]}
 }
 
 func (c *dynamicResourceClient) Namespace(ns string) dynamic.ResourceInterface {
@@ -551,19 +467,15 @@ func (c *dynamicResourceClient) Apply(ctx context.Context, name string, obj *uns
 	switch {
 	case len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(kcptesting.NewRootPatchAction(c.resource, c.client.clusterPath, name, types.ApplyPatchType,
-				outBytes),
-				&metav1.Status{Status: "dynamic patch fail"})
+			Invokes(kcptesting.NewRootPatchAction(c.resource, c.client.clusterPath, name, types.ApplyPatchType, outBytes), &metav1.Status{Status: "dynamic patch fail"})
 
 	case len(c.namespace) == 0 && len(subresources) > 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(kcptesting.NewRootPatchSubresourceAction(c.resource, c.client.clusterPath, name, types.ApplyPatchType, outBytes,
-				subresources...), &metav1.Status{Status: "dynamic patch fail"})
+			Invokes(kcptesting.NewRootPatchSubresourceAction(c.resource, c.client.clusterPath, name, types.ApplyPatchType, outBytes, subresources...), &metav1.Status{Status: "dynamic patch fail"})
 
 	case len(c.namespace) > 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(kcptesting.NewPatchAction(c.resource, c.client.clusterPath, c.namespace, name, types.ApplyPatchType, outBytes),
-				&metav1.Status{Status: "dynamic patch fail"})
+			Invokes(kcptesting.NewPatchAction(c.resource, c.client.clusterPath, c.namespace, name, types.ApplyPatchType, outBytes), &metav1.Status{Status: "dynamic patch fail"})
 
 	case len(c.namespace) > 0 && len(subresources) > 0:
 		uncastRet, err = c.client.Fake.
