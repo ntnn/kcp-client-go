@@ -9,6 +9,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/metadata"
+
+	kcptesting "github.com/kcp-dev/client-go/third_party/k8s.io/client-go/testing"
 )
 
 var _ kcpmetadata.ClusterInterface = (*FakeMetadataClusterClientset)(nil)
