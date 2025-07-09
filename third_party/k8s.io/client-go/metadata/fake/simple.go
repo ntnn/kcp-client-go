@@ -53,7 +53,7 @@ func NewTestScheme() *runtime.Scheme {
 // NewSimpleMetadataClient creates a new client that will use the provided scheme and respond with the
 // provided objects when requests are made. It will track actions made to the client which can be checked
 // with GetActions().
-func NewSimpleMetadataClient(scheme *runtime.Scheme, objects ...runtime.Object) *FakeMetadataClient {
+func NewSimpleMetadataClient(scheme *runtime.Scheme, objects ...runtime.Object) *FakeMetadataClusterClientset {
 	gvkFakeList := schema.GroupVersionKind{Group: "fake-metadata-client-group", Version: "v1", Kind: "List"}
 	if !scheme.Recognizes(gvkFakeList) {
 		// In order to use List with this client, you have to have the v1.List registered in your scheme, since this is a test

@@ -10,6 +10,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
+
+	kcpdynamic "github.com/kcp-dev/client-go/dynamic"
+	kcptesting "github.com/kcp-dev/client-go/third_party/k8s.io/client-go/testing"
 )
 
 // TODO add boilerplate
@@ -96,8 +99,3 @@ func (f *FakeDynamicClusterClient) List(ctx context.Context, opts metav1.ListOpt
 func (f *FakeDynamicClusterClient) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return f.cluster(logicalcluster.Wildcard).Watch(ctx, opts)
 }
-
-var (
-	_ dynamic.Interface           = &FakeDynamicClient{}
-	_ kcptesting.FakeScopedClient = &FakeDynamicClient{}
-)

@@ -145,11 +145,11 @@ type dynamicResourceClient struct {
 }
 
 var (
-	_ dynamic.Interface     = &FakeDynamicClient{}
-	_ kcptesting.FakeClient = &FakeDynamicClient{}
+	_ dynamic.Interface           = &FakeDynamicClient{}
+	_ kcptesting.FakeScopedClient = &FakeDynamicClient{}
 )
 
-func (c *FakeDynamicClient) Tracker() kcptesting.ObjectTracker {
+func (c *FakeDynamicClient) Tracker() kcptesting.ScopedObjectTracker {
 	return c.tracker
 }
 

@@ -72,7 +72,7 @@ func New(c rest.Interface) *DynamicClient {
 
 // NewForConfigOrDie creates a new DynamicClient for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *DynamicClient {
+func NewForConfigOrDie(c *rest.Config) dynamic.Interface {
 	ret, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -83,7 +83,7 @@ func NewForConfigOrDie(c *rest.Config) *DynamicClient {
 // NewForConfig creates a new dynamic client or returns an error.
 // NewForConfig is equivalent to NewForConfigAndClient(c, httpClient),
 // where httpClient was generated with rest.HTTPClientFor(c).
-func NewForConfig(inConfig *rest.Config) (*DynamicClient, error) {
+func NewForConfig(inConfig *rest.Config) (dynamic.Interface, error) {
 	config := ConfigFor(inConfig)
 
 	httpClient, err := rest.HTTPClientFor(config)
@@ -95,7 +95,7 @@ func NewForConfig(inConfig *rest.Config) (*DynamicClient, error) {
 
 // NewForConfigAndClient creates a new dynamic client for the given config and http client.
 // Note the http client provided takes precedence over the configured transport values.
-func NewForConfigAndClient(inConfig *rest.Config, h *http.Client) (*DynamicClient, error) {
+func NewForConfigAndClient(inConfig *rest.Config, h *http.Client) (dynamic.Interface, error) {
 	config := ConfigFor(inConfig)
 	config.GroupVersion = nil
 	config.APIPath = "/if-you-see-this-search-for-the-break"
@@ -113,11 +113,11 @@ type dynamicResourceClient struct {
 	resource  schema.GroupVersionResource
 }
 
-func (c *DynamicClient) Resource(resource schema.GroupVersionResource) NamespaceableResourceInterface {
+func (c *DynamicClient) Resource(resource schema.GroupVersionResource) dynamic.NamespaceableResourceInterface {
 	return &dynamicResourceClient{client: c, resource: resource}
 }
 
-func (c *dynamicResourceClient) Namespace(ns string) ResourceInterface {
+func (c *dynamicResourceClient) Namespace(ns string) dynamic.ResourceInterface {
 	ret := *c
 	ret.namespace = ns
 	return &ret
