@@ -23,13 +23,14 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/klog/v2"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilcache "k8s.io/apimachinery/pkg/util/cache"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/klog/v2"
 )
 
 // MutationCache is able to take the result of update operations and stores them in an LRU
@@ -61,7 +62,7 @@ type ResourceVersionComparator interface {
 // If includeAdds is true, objects in the mutation cache will be returned even if they don't exist
 // in the underlying store. This is only safe if your use of the cache can handle mutation entries
 // remaining in the cache for up to ttl when mutations and deletes occur very closely in time.
-func NewIntegerResourceVersionMutationCache(keyFunc cache.KeyFunc, backingCache cache.Store, indexer cache.Indexer, ttl time.Duration, includeAdds bool) MutationCache {
+func NewIntegerResourceVersionMutationCache(logger klog.Logger, keyFunc cache.KeyFunc, backingCache cache.Store, indexer cache.Indexer, ttl time.Duration, includeAdds bool) MutationCache {
 	return &mutationCache{
 		keyFunc:       keyFunc,
 		backingCache:  backingCache,
@@ -70,6 +71,7 @@ func NewIntegerResourceVersionMutationCache(keyFunc cache.KeyFunc, backingCache 
 		comparator:    etcdObjectVersioner{},
 		ttl:           ttl,
 		includeAdds:   includeAdds,
+		logger:        logger,
 	}
 }
 
@@ -77,6 +79,7 @@ func NewIntegerResourceVersionMutationCache(keyFunc cache.KeyFunc, backingCache 
 // since you can't distinguish between, "didn't observe create" and "was deleted after create",
 // if the key is missing from the backing cache, we always return it as missing
 type mutationCache struct {
+	logger        klog.Logger
 	lock          sync.Mutex
 	keyFunc       cache.KeyFunc
 	backingCache  cache.Store
@@ -160,7 +163,7 @@ func (c *mutationCache) ByIndex(name string, indexKey string) ([]interface{}, er
 			}
 			elements, err := fn(updated)
 			if err != nil {
-				klog.V(4).Infof("Unable to calculate an index entry for mutation cache entry %s: %v", key, err)
+				c.logger.V(4).Info("Unable to calculate an index entry for mutation cache entry", "key", key, "err", err)
 				continue
 			}
 			for _, inIndex := range elements {
@@ -204,10 +207,10 @@ func (c *mutationCache) Mutation(obj interface{}) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	key, err := c.keyFunc(obj)
+	key, err := DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		// this is a "nice to have", so failures shouldn't do anything weird
-		utilruntime.HandleError(err)
+		utilruntime.HandleErrorWithLogger(c.logger, err, "DeletionHandlingMetaNamespaceKeyFunc")
 		return
 	}
 
