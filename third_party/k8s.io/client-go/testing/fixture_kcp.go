@@ -91,7 +91,7 @@ func (t *tracker) AddAll(objects ...runtime.Object) error {
 }
 
 func (t *scopedTracker) List(gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, ns string, opts ...metav1.ListOptions) (runtime.Object, error) {
-	list, err := t.list(gvr, gvk, ns, opts...)
+	list, err := t.List(gvr, gvk, ns, opts...)
 	if err != nil {
 		return list, err
 	}

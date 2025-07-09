@@ -53,11 +53,11 @@ type ObjectTracker interface {
 
 	// List retrieves all objects of a given kind in the given
 	// namespace. Only non-List kinds are accepted.
-	List(gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, ns string) (runtime.Object, error)
+	List(gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, ns string, opts ...metav1.ListOptions) (runtime.Object, error)
 
 	// Watch watches objects from the tracker. Watch returns a channel
 	// which will push added / modified / deleted object.
-	Watch(gvr schema.GroupVersionResource, ns string) (watch.Interface, error)
+	Watch(gvr schema.GroupVersionResource, ns string, opts ...metav1.ListOptions) (watch.Interface, error)
 }
 
 // ScopedObjectTracker keeps track of objects in one cluster. It is intended to be used to
@@ -394,7 +394,7 @@ func (t *scopedTracker) Watch(gvr schema.GroupVersionResource, ns string, opts .
 	return t.tracker.watch(gvr, t.clusterPath, ns, opts...)
 }
 
-func (t *tracker) Watch(gvr schema.GroupVersionResource, ns string) (watch.Interface, error) {
+func (t *tracker) Watch(gvr schema.GroupVersionResource, ns string, opts ...metav1.ListOptions) (watch.Interface, error) {
 	return t.watch(gvr, logicalcluster.Wildcard, ns)
 }
 
@@ -680,8 +680,7 @@ func (t *scopedTracker) Delete(gvr schema.GroupVersionResource, ns, name string,
 		return apierrors.NewNotFound(gvr.GroupResource(), name)
 	}
 
-	namespacedName := types.NamespacedName{Namespace: ns, Name: name}
-	namespacedName = ClusterNamespacedName{Cluster: t.clusterPath, NamespacedName: namespacedName}
+	namespacedName := ClusterNamespacedName{Cluster: t.clusterPath, NamespacedName: types.NamespacedName{Namespace: ns, Name: name}}
 	obj, ok := objs[namespacedName]
 	if !ok {
 		return apierrors.NewNotFound(gvr.GroupResource(), name)
