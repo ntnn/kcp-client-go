@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/features"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/apply"
@@ -41,7 +42,7 @@ type DynamicClient struct {
 	client rest.Interface
 }
 
-var _ Interface = &DynamicClient{}
+var _ dynamic.Interface = &DynamicClient{}
 
 // ConfigFor returns a copy of the provided config with the
 // appropriate dynamic client defaults set.
