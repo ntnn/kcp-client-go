@@ -32,6 +32,7 @@ update_copy() {
         return
     fi
     local local_file="$2"
+    shift 2
     # TODO could look into making this a go command and then use the AST
     # to make intelligent transformations.
     # E.g. the types are somewhat deterministic from `fakeX` to `scopedX`
@@ -40,28 +41,32 @@ update_copy() {
     sed \
         -e '/Copyright .* The Kubernetes Authors./a \
 Modifications Copyright YEAR The KCP Authors.' \
-        -e 's#k8s.io/client-go/testing#github.com/kcp-dev/client-go/third_party/k8s.io/client-go/testing#' \
-        -e 's#"github.com/kcp-dev/client-go/third_party/k8s.io/client-go/testing"#kcptesting "github.com/kcp-dev/client-go/third_party/k8s.io/client-go/testing"#' \
-        -e 's#testing\.#kcptesting.#' \
+        "$@" \
         "$upstream_file" > "$local_file"
 }
+
 
 update_third_party() {
     for third_party in $(find third_party/k8s.io/client-go -type f); do
         update_copy \
             "$source_dir/${third_party##third_party/k8s.io/client-go/}" \
-            "$third_party"
+            "$third_party" \
+            -e 's#"k8s.io/client-go/testing"#kcptesting "github.com/kcp-dev/client-go/third_party/k8s.io/client-go/testing"#' \
+            -e 's# testing\.#kcptesting.#' \
+            -e 's#*testing\.#*kcptesting.#'
+
     done
 }
 
 update_expansion() {
     local upstream_file="$1"
+    shift 1
     if [[ ! -f "$upstream_file" ]]; then
         echo "Upstream file $upstream_file does not exist, skipping"
         return
     fi
     local local_equivalent="${upstream_file##$source_dir/}"
-    update_copy "$upstream_file" "$local_equivalent"
+    update_copy "$upstream_file" "$local_equivalent" "$@"
 }
 
 update_expansions() {
@@ -69,7 +74,8 @@ update_expansions() {
         update_expansion "$expansion"
     done
     for expansion in $(find "${source_dir}/kubernetes" -type f -name 'fake_*_expansion.go'); do
-        update_expansion "$expansion"
+        update_expansion "$expansion" \
+            -e 's#"k8s.io/client-go/testing"#"github.com/kcp-dev/client-go/third_party/k8s.io/client-go/testing"#'
     done
 }
 
